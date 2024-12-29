@@ -1,79 +1,65 @@
 import * as Crypto from "expo-crypto";
-import base32 from "base32-encode";
-import CryptoJS from "crypto-js";
+import { Buffer } from 'buffer';
+import base32Encode from "base32-encode";
+import base32Decode from "base32-decode";
+import hmac from 'crypto-js/hmac-sha256';
+import { useTotpStore } from '../store/totpStore';
 
-// Base32 decode function
-function base32ToHex(base32Str: string): string {
-  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let bits = '';
-  
-  // Convert each base32 character to 5 bits
-  for (let i = 0; i < base32Str.length; i++) {
-    const val = base32Chars.indexOf(base32Str.charAt(i).toUpperCase());
-    if (val === -1) continue; // Skip non-base32 chars
-    bits += val.toString(2).padStart(5, '0');
-  }
-  
-  // Convert bits to hex
-  let hex = '';
-  for (let i = 0; i + 4 <= bits.length; i += 4) {
-    const chunk = bits.substring(i, i + 4);
-    hex += parseInt(chunk, 2).toString(16);
-  }
-  return hex;
-}
-
-// Generate a new secret
-export async function generateSecret(): Promise<string> {
-  // Generate 20 random bytes (160 bits) for SHA1 HMAC
-  const randomBytes = await Crypto.getRandomBytesAsync(20);
-  // Convert to base32 for standard TOTP secret format
-  return base32(randomBytes, 'RFC4648-HEX', { padding: false });
-}
-
-// Generate TOTP code
-export function generateTotp(secret: string): string {
-  const timeStep = 30; // 30 seconds
-  const t = Math.floor(Date.now() / 1000 / timeStep);
-  
-  // Convert counter to bytes
-  const timeHex = t.toString(16).padStart(16, '0');
-  
-  // Calculate HMAC
-  const hmac = CryptoJS.HmacSHA1(
-    CryptoJS.enc.Hex.parse(timeHex),
-    CryptoJS.enc.Hex.parse(base32ToHex(secret))
+function dynamicTruncate(hmacBuf: Buffer): number {
+  const offset = hmacBuf[hmacBuf.length - 1] & 0x0f;
+  return (
+    ((hmacBuf[offset] & 0x7f) << 24) |
+    (hmacBuf[offset + 1] << 16) |
+    (hmacBuf[offset + 2] << 8) |
+    hmacBuf[offset + 3]
   );
-  
-  const hmacHex = hmac.toString(CryptoJS.enc.Hex);
-  
-  // TODO: check and fix this if not working as expected
-  
-  // Get offset
-  const offset = parseInt(hmacHex.slice(-1), 16);
-  
-  // Generate 4-byte code starting from offset
-  const code = parseInt(hmacHex.substring(offset * 2, 8), 16) & 0x7fffffff;
-  
-  // Get 6 digits
-  return (code % 1000000).toString().padStart(6, '0');
+}
+
+export async function generateSecret(): Promise<string> {
+  // Generate 32 random bytes (256 bits) for SHA256 HMAC
+  const randomBytes = await Crypto.getRandomBytesAsync(32);
+  // Convert to base32 for standard TOTP secret format
+  return base32Encode(randomBytes, 'RFC4648', { padding: false });
+}
+
+export async function generateTotp(secret: string): Promise<string> {
+  const { config } = useTotpStore.getState();
+  const counter = Math.floor(Date.now() / 1000 / config.timeStep);
+
+  // 1. Build an 8-byte counter
+  const counterBuf = Buffer.alloc(8);
+  counterBuf.writeBigUInt64BE(BigInt(counter));
+
+  // 2. Decode key from Base32
+  const keyBytes = Buffer.from(base32Decode(secret, 'RFC4648'));
+
+  // 3. Compute HMAC (message=counterBuf, key=keyBytes)
+  const hmacHex = hmac(counterBuf.toString('hex'), keyBytes.toString('hex')).toString();
+  const hmacBuf = Buffer.from(hmacHex, 'hex');
+
+  // 4. Dynamic truncation
+  const truncated = dynamicTruncate(hmacBuf);
+  const hotp = truncated % 10 ** config.digits;
+
+  return hotp.toString().padStart(config.digits, '0');
 }
 
 // Generate passphrase
-export function generatePassphrase(totp: number): string {
+export function generatePassphrase(totp: string): string {
+  const totpNumber = parseInt(totp);
   const adjectives = require("../assets/adjectives.json").adjectives;
   const nouns = require("../assets/nouns.json").nouns;
 
-  const adjectiveIndex = totp % adjectives.length;
-  const remaining = Math.floor(totp / adjectives.length);
+  const adjectiveIndex = totpNumber % adjectives.length;
+  const remaining = Math.floor(totpNumber / adjectives.length);
   const nounIndex = remaining % nouns.length;
 
   // Combine words
   return `${adjectives[adjectiveIndex]} ${nouns[nounIndex]}`;
 }
 
-// Validate TOTP code with a 30-second window
-export function validateTotp(token: string, secret: string): boolean {
-  const currentCode = generateTotp(secret);
+// Validate TOTP code with the time window
+export async function validateTotp(token: string, secret: string): Promise<boolean> {
+  const currentCode = await generateTotp(secret);
   return token === currentCode;
 }
