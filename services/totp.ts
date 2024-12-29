@@ -51,10 +51,19 @@ export function generateTotp(secret: string): string {
   const offset = parseInt(hmacHex.slice(-1), 16);
   
   // Generate 4-byte code starting from offset
-  const code = parseInt(hmacHex.substr(offset * 2, 8), 16) & 0x7fffffff;
+  const code = parseInt(hmacHex.substring(offset * 2, 8), 16) & 0x7fffffff;
   
   // Get 6 digits
   return (code % 1000000).toString().padStart(6, '0');
+}
+
+// Generate passphrase
+export function generatePassphrase(totp: number): string {
+  const adjectives = require("../assets/adjectives.json");
+  const nouns = require("../assets/nouns.json");
+
+  // TODO
+  return `passphrase-from-${totp}`;
 }
 
 // Validate TOTP code with a 30-second window
