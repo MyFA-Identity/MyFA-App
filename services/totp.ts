@@ -62,8 +62,12 @@ export function generatePassphrase(totp: number): string {
   const adjectives = require("../assets/adjectives.json");
   const nouns = require("../assets/nouns.json");
 
-  // TODO
-  return `passphrase-from-${totp}`;
+  const adjectiveIndex = totp % adjectives.length;
+  const remaining = Math.floor(totp / adjectives.length);
+  const nounIndex = remaining % nouns.length;
+
+  // Combine words
+  return `${adjectives[adjectiveIndex]} ${nouns[nounIndex]}`;
 }
 
 // Validate TOTP code with a 30-second window
