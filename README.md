@@ -113,43 +113,6 @@ Usage Flow
 	•	Both devices generate a rotating phrase (or emojis) using the same secret.
 	•	Comparing these phrases ensures you’re talking to the correct person.
 
-Project Structure
-
-Below is a simplified version of the folder structure:
-
-myfa
-├── app
-│   ├── (tabs)
-│   │   ├── index.tsx
-│   │   ├── _layout.tsx
-│   │   └── explore.tsx
-│   ├── +not-found.tsx
-│   └── _layout.tsx
-├── assets
-│   ├── images
-│   └── fonts
-├── components
-│   ├── ui
-│   ├── ExternalLink.tsx
-│   ├── ThemedText.tsx
-│   ├── ThemedView.tsx
-│   └── ...
-├── constants
-│   └── Colors.ts
-├── hooks
-│   ├── useColorScheme.ts
-│   └── useThemeColor.ts
-├── services
-│   ├── crypto.ts
-│   └── storage.ts
-├── utils
-│   └── dictionary.ts
-├── scripts
-│   └── reset-project.js
-├── tsconfig.json
-├── app.json
-└── README.md
-
 Key files of interest:
 	•	services/crypto.ts: Manages TOTP-like logic (generating secrets, hashing).
 	•	services/storage.ts: Handles reading/writing contacts with MMKV.
