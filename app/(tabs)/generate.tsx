@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { generateSecret, generateTotp } from '../../services/totp';
+import { generateSecret, generateTotp, generatePassphrase } from '../../services/totp';
 
 export default function GenerateTotpScreen() {
   const [secret, setSecret] = useState<string>('');
@@ -79,6 +79,8 @@ export default function GenerateTotpScreen() {
       <Text style={styles.label}>Current TOTP Code:</Text>
       <Text style={styles.code}>{code}</Text>
 
+      <Text style={styles.passphrase}>{generatePassphrase(parseInt(code))}</Text>
+
       <Text style={styles.countdown}>
         Expires in {remaining} second{remaining !== 1 ? 's' : ''}
       </Text>
@@ -114,6 +116,13 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: 'bold',
     marginTop: 8,
+  },
+  passphrase: {
+    fontSize: 18,
+    color: '#444',
+    marginTop: 8,
+    marginBottom: 8,
+    fontStyle: 'italic'
   },
   countdown: {
     marginTop: 8,

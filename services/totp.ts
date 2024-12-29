@@ -47,6 +47,8 @@ export function generateTotp(secret: string): string {
   
   const hmacHex = hmac.toString(CryptoJS.enc.Hex);
   
+  // TODO: check and fix this if not working as expected
+  
   // Get offset
   const offset = parseInt(hmacHex.slice(-1), 16);
   
@@ -59,8 +61,8 @@ export function generateTotp(secret: string): string {
 
 // Generate passphrase
 export function generatePassphrase(totp: number): string {
-  const adjectives = require("../assets/adjectives.json");
-  const nouns = require("../assets/nouns.json");
+  const adjectives = require("../assets/adjectives.json").adjectives;
+  const nouns = require("../assets/nouns.json").nouns;
 
   const adjectiveIndex = totp % adjectives.length;
   const remaining = Math.floor(totp / adjectives.length);
